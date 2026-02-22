@@ -1,12 +1,30 @@
 {
-  "name": "@bodhi_agent/realtime-agent-framework",
+  "name": "bodhi-realtime-agent",
   "version": "0.1.0",
-  "private": false,
   "description": "TypeScript framework for real-time voice agent applications using Google Gemini Live API",
+  "keywords": [
+    "ai",
+    "agent",
+    "ai-agent",
+    "voice",
+    "realtime",
+    "gemini",
+    "google",
+    "framework",
+    "voice-agent",
+    "agentic-framework"
+  ],
+  "homepage": "https://github.com/randombet/bodhi_realtime_agent#readme",
+  "bugs": {
+    "url": "https://github.com/randombet/bodhi_realtime_agent/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/randombet/bodhi_realtime_agent.git"
+  },
+  "license": "MIT",
+  "author": "Yixuan Zhai",
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -19,9 +37,14 @@
       }
     }
   },
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
@@ -29,15 +52,11 @@
     "lint": "biome check src/ test/",
     "lint:fix": "biome check --fix src/",
     "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build && pnpm test",
     "docs:dev": "vitepress dev docs",
     "docs:build": "typedoc && vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "author": "Yixuan Zhai",
-  "license": "MIT",
   "dependencies": {
     "@ai-sdk/google": "^1.2.0",
     "@google/genai": "^1.41.0",
@@ -60,6 +79,14 @@
     "vitepress": "^1.6.4",
     "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
