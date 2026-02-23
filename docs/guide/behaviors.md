@@ -5,7 +5,7 @@ Behaviors let you make voice agent characteristics — speech speed, verbosity, 
 ## Quick Start
 
 ```typescript
-import { speechSpeed } from 'bodhi-realtime-agent';
+import { speechSpeed } from '@bodhi_agent/realtime-agent-framework';
 
 const session = new VoiceSession({
   // ...required config...
@@ -108,7 +108,7 @@ sequenceDiagram
 A **BehaviorCategory** declares a tunable behavior with named presets. Each preset maps to a directive string that gets injected into the model's context:
 
 ```typescript
-import type { BehaviorCategory } from 'bodhi-realtime-agent';
+import type { BehaviorCategory } from '@bodhi_agent/realtime-agent-framework';
 
 const formality: BehaviorCategory = {
   key: 'formality',
@@ -159,7 +159,7 @@ The framework ships with factory functions for common behaviors:
 Controls speech pacing with slow / normal / fast presets:
 
 ```typescript
-import { speechSpeed } from 'bodhi-realtime-agent';
+import { speechSpeed } from '@bodhi_agent/realtime-agent-framework';
 
 const session = new VoiceSession({
   behaviors: [speechSpeed()],
@@ -174,7 +174,7 @@ Presets: `normal` (default, no directive), `slow` (short sentences, frequent pau
 Controls response detail level:
 
 ```typescript
-import { verbosity } from 'bodhi-realtime-agent';
+import { verbosity } from '@bodhi_agent/realtime-agent-framework';
 
 const session = new VoiceSession({
   behaviors: [speechSpeed(), verbosity()],
@@ -189,7 +189,7 @@ Presets: `normal` (default), `brief` (one sentence max), `detailed` (thorough ex
 Switches the response language. You provide the language list:
 
 ```typescript
-import { responseLanguage } from 'bodhi-realtime-agent';
+import { responseLanguage } from '@bodhi_agent/realtime-agent-framework';
 
 const session = new VoiceSession({
   behaviors: [
@@ -297,13 +297,13 @@ const formality: BehaviorCategory = {
 A voice assistant with speech speed and verbosity controls:
 
 ```typescript
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { google } from '@ai-sdk/google';
 import {
   VoiceSession,
   speechSpeed,
   verbosity,
-} from 'bodhi-realtime-agent';
-import type { MainAgent } from 'bodhi-realtime-agent';
+} from '@bodhi_agent/realtime-agent-framework';
+import type { MainAgent } from '@bodhi_agent/realtime-agent-framework';
 
 const agent: MainAgent = {
   name: 'assistant',
@@ -318,7 +318,7 @@ const session = new VoiceSession({
   agents: [agent],
   initialAgent: 'assistant',
   port: 9900,
-  model: createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY! })('gemini-2.0-flash'),
+  model: google('gemini-2.0-flash'),
   behaviors: [speechSpeed(), verbosity()],
 });
 

@@ -5,7 +5,7 @@ Build a working voice agent in 5 minutes. By the end, you'll have an agent that 
 ## Step 1: Install
 
 ```bash
-pnpm add bodhi-realtime-agent @ai-sdk/google zod
+pnpm add @bodhi_agent/realtime-agent-framework @ai-sdk/google zod
 ```
 
 ## Step 2: Get an API Key
@@ -23,7 +23,7 @@ export GEMINI_API_KEY="your-key-here"
 An agent is a persona with instructions and optional tools. Here's the simplest possible agent:
 
 ```typescript
-import type { MainAgent } from 'bodhi-realtime-agent';
+import type { MainAgent } from '@bodhi_agent/realtime-agent-framework';
 
 const assistant: MainAgent = {
   name: 'assistant',
@@ -37,8 +37,8 @@ const assistant: MainAgent = {
 A `VoiceSession` wires together the agent, Gemini connection, and client WebSocket server:
 
 ```typescript
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { VoiceSession } from 'bodhi-realtime-agent';
+import { google } from '@ai-sdk/google';
+import { VoiceSession } from '@bodhi_agent/realtime-agent-framework';
 
 const session = new VoiceSession({
   sessionId: `session_${Date.now()}`,
@@ -47,7 +47,7 @@ const session = new VoiceSession({
   agents: [assistant],
   initialAgent: 'assistant',
   port: 9900,
-  model: createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY! })('gemini-2.0-flash'),
+  model: google('gemini-2.0-flash'),
 });
 
 await session.start();
@@ -63,9 +63,9 @@ Connect any WebSocket client that sends PCM audio (16-bit, 16kHz, mono) to `ws:/
 Create a file called `my-agent.ts`:
 
 ```typescript
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { VoiceSession } from 'bodhi-realtime-agent';
-import type { MainAgent } from 'bodhi-realtime-agent';
+import { google } from '@ai-sdk/google';
+import { VoiceSession } from '@bodhi_agent/realtime-agent-framework';
+import type { MainAgent } from '@bodhi_agent/realtime-agent-framework';
 
 const assistant: MainAgent = {
   name: 'assistant',
@@ -80,7 +80,7 @@ const session = new VoiceSession({
   agents: [assistant],
   initialAgent: 'assistant',
   port: 9900,
-  model: createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY! })('gemini-2.0-flash'),
+  model: google('gemini-2.0-flash'),
 });
 
 await session.start();
@@ -112,7 +112,7 @@ Tools let your agent do things — check the time, calculate math, search the we
 
 ```typescript
 import { z } from 'zod';
-import type { ToolDefinition } from 'bodhi-realtime-agent';
+import type { ToolDefinition } from '@bodhi_agent/realtime-agent-framework';
 
 const getCurrentTime: ToolDefinition = {
   name: 'get_current_time',

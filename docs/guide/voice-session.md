@@ -7,9 +7,9 @@ It manages the Gemini connection, client WebSocket server, agent routing, tool e
 ## Basic Usage
 
 ```typescript
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { VoiceSession } from 'bodhi-realtime-agent';
-import type { MainAgent } from 'bodhi-realtime-agent';
+import { google } from '@ai-sdk/google';
+import { VoiceSession } from '@bodhi_agent/realtime-agent-framework';
+import type { MainAgent } from '@bodhi_agent/realtime-agent-framework';
 
 const agent: MainAgent = {
   name: 'assistant',
@@ -24,7 +24,7 @@ const session = new VoiceSession({
   agents: [agent],
   initialAgent: 'assistant',
   port: 9900,
-  model: createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY! })('gemini-2.0-flash'),
+  model: google('gemini-2.0-flash'),
 });
 
 await session.start();
@@ -43,7 +43,7 @@ const session = new VoiceSession({
   agents: [mainAgent, expertAgent],        // All agents in this session
   initialAgent: 'main',                    // Agent to start with
   port: 9900,                              // WebSocket port for client connections
-  model: createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY! })('gemini-2.0-flash'), // Vercel AI SDK model (for subagents)
+  model: google('gemini-2.0-flash'),       // Vercel AI SDK model (for subagents)
 
   // --- Optional: Gemini model ---
   geminiModel: 'gemini-2.5-flash-native-audio-preview',  // Native audio model
@@ -68,7 +68,7 @@ const session = new VoiceSession({
   // behaviors: [speechSpeed(), verbosity()],  // See /guide/behaviors
 
   // --- Optional: Persistence ---
-  // memoryStore: new MarkdownMemoryStore('./memory'),
+  // memory: { store: new JsonMemoryStore('./memory') },
   // conversationHistoryStore: myHistoryStore,
   // sessionStore: new InMemorySessionStore(),
 });

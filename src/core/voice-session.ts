@@ -4,12 +4,14 @@ import type { LanguageModelV1 } from 'ai';
 import { resolveInstructions } from '../agent/agent-context.js';
 import { AgentRouter } from '../agent/agent-router.js';
 import { BehaviorManager } from '../behaviors/behavior-manager.js';
+import { MemoryDistiller } from '../memory/memory-distiller.js';
 import { ToolExecutor } from '../tools/tool-executor.js';
 import { ClientTransport } from '../transport/client-transport.js';
 import { GeminiLiveTransport } from '../transport/gemini-live-transport.js';
 import type { MainAgent, SubagentConfig } from '../types/agent.js';
 import type { BehaviorCategory } from '../types/behavior.js';
 import type { FrameworkHooks } from '../types/hooks.js';
+import type { MemoryFact, MemoryStore } from '../types/memory.js';
 import type { ToolDefinition } from '../types/tool.js';
 import { ConversationContext } from './conversation-context.js';
 import { EventBus } from './event-bus.js';
@@ -50,6 +52,13 @@ export interface VoiceSessionConfig {
 	inputAudioTranscription?: boolean;
 	/** Behavior categories for dynamic runtime tuning (speech speed, verbosity, etc.). */
 	behaviors?: BehaviorCategory[];
+	/** Enable memory distillation. Extracts durable user facts from conversation and persists them. */
+	memory?: {
+		/** Where to persist extracted facts. */
+		store: MemoryStore;
+		/** Extract every N turns (default: 5). */
+		turnFrequency?: number;
+	};
 }
 
 /**
@@ -87,6 +96,8 @@ export class VoiceSession {
 	private toolExecutor: ToolExecutor;
 	private subagentConfigs: Record<string, SubagentConfig>;
 	private behaviorManager?: BehaviorManager;
+	private memoryDistiller?: MemoryDistiller;
+	private memoryFactsCache: MemoryFact[] = [];
 	private turnId = 0;
 	private config: VoiceSessionConfig;
 	private inputTranscriptBuffer = '';
@@ -127,6 +138,16 @@ export class VoiceSession {
 		// Set up BehaviorManager early — tools must be declared to Gemini at connect time.
 		// Callbacks capture `this` via closures and are only invoked at runtime (not during construction).
 		if (config.behaviors?.length) {
+			const memoryStore = config.memory?.store;
+			const onPresetChange = memoryStore
+				? () => {
+						const presets = Object.fromEntries(this.behaviorManager?.activePresets ?? []);
+						memoryStore.setDirectives(config.userId, presets).catch(() => {
+							// Best-effort — directive persistence failure is non-fatal
+						});
+					}
+				: undefined;
+
 			this.behaviorManager = new BehaviorManager(
 				config.behaviors,
 				(key, value, scope) => {
@@ -135,7 +156,25 @@ export class VoiceSession {
 					else map.set(key, value);
 				},
 				(msg) => this.clientTransport.sendJsonToClient(msg),
+				onPresetChange,
 			);
+		}
+
+		// Set up memory distillation plugin
+		if (config.memory) {
+			const freq = config.memory.turnFrequency ?? 5;
+			this.memoryDistiller = new MemoryDistiller(
+				this.conversationContext,
+				config.memory.store,
+				this.hooks,
+				config.model,
+				{
+					userId: config.userId,
+					sessionId: config.sessionId,
+					turnFrequency: freq,
+				},
+			);
+			this.log(`Memory distillation enabled (every ${freq} turns)`);
 		}
 
 		// Set up Gemini transport
@@ -231,6 +270,26 @@ export class VoiceSession {
 
 	/** Start the client WebSocket server and connect to Gemini. */
 	async start(): Promise<void> {
+		await this.refreshMemoryCache();
+
+		// Restore behavior presets from structured directives (deterministic lookup)
+		if (this.config.memory && this.behaviorManager) {
+			try {
+				const directives = await this.config.memory.store.getDirectives(this.config.userId);
+				const restored: string[] = [];
+				for (const [key, presetName] of Object.entries(directives)) {
+					if (this.behaviorManager.restorePreset(key, presetName)) {
+						restored.push(key);
+					}
+				}
+				if (restored.length > 0) {
+					this.log(`Restored behavior presets from directives: ${restored.join(', ')}`);
+				}
+			} catch {
+				// Best-effort — directive loading failure is non-fatal
+			}
+		}
+
 		this.log('Starting WS server...');
 		await this.clientTransport.start();
 		this.log('WS server ready. Connecting to Gemini...');
@@ -250,6 +309,17 @@ export class VoiceSession {
 				sessionId: this.config.sessionId,
 				turnId: `turn_${this.turnId}`,
 			});
+		}
+
+		// Final memory extraction before closing
+		if (this.memoryDistiller) {
+			this.log('Running final memory extraction...');
+			try {
+				await this.memoryDistiller.forceExtract();
+				this.log('Final memory extraction complete');
+			} catch {
+				this.log('Final memory extraction failed (best-effort)');
+			}
 		}
 
 		await this.geminiTransport.disconnect();
@@ -507,10 +577,16 @@ export class VoiceSession {
 					injectSystemMessage: (text) =>
 						this.conversationContext.addAssistantMessage(`[system] ${text}`),
 					getRecentTurns: (count = 10) => [...this.conversationContext.items].slice(-count),
-					getMemoryFacts: () => [],
+					getMemoryFacts: () => this.memoryFactsCache,
 				},
 				transcript,
 			);
+		}
+
+		// Trigger memory extraction (every N turns) and refresh cache
+		if (this.memoryDistiller) {
+			this.memoryDistiller.onTurnEnd();
+			this.refreshMemoryCache();
 		}
 
 		// Reinforce active directives so Gemini doesn't drift
@@ -549,6 +625,18 @@ export class VoiceSession {
 		if (!agent.greeting) return;
 		this.log(`Sending greeting for agent "${agent.name}"`);
 		this.firstAudioReceived = false;
+
+		// Inject stored memory facts so Gemini knows the user from the first turn
+		if (this.memoryFactsCache.length > 0) {
+			const summary = this.memoryFactsCache.map((f) => `- ${f.content}`).join('\n');
+			const memoryText = `[MEMORY — what you already know about this user from previous sessions]\n${summary}`;
+			this.geminiTransport.sendClientContent(
+				[{ role: 'user', parts: [{ text: memoryText }] }],
+				true,
+			);
+			this.log(`Injected ${this.memoryFactsCache.length} memory facts`);
+		}
+
 		// Prepend session directives so the greeting response respects user preferences (e.g. pacing)
 		const directiveSuffix = this.getSessionDirectiveSuffix();
 		const greetingText = directiveSuffix
@@ -790,6 +878,19 @@ export class VoiceSession {
 				severity: 'error',
 			});
 		}
+	}
+
+	/** Reload cached memory facts from the store (fire-and-forget safe). */
+	private refreshMemoryCache(): Promise<void> {
+		if (!this.config.memory) return Promise.resolve();
+		return this.config.memory.store
+			.getAll(this.config.userId)
+			.then((facts) => {
+				this.memoryFactsCache = facts;
+			})
+			.catch(() => {
+				// Best-effort — keep stale cache on failure
+			});
 	}
 
 	/** Compact diagnostic log: HH:MM:SS.mmm [VoiceSession] message */
