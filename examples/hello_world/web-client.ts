@@ -532,6 +532,29 @@ function connectWs() {
             $('transcript').appendChild(imgEl);
             $('transcript').scrollTop = $('transcript').scrollHeight;
             dbg('Image received via gui.update: ' + (guiData.description || '').slice(0, 50), 'event');
+          } else if (guiData?.type === 'video' && guiData.base64) {
+            const vidEl = document.createElement('div');
+            vidEl.className = 't-entry t-system';
+            const video = document.createElement('video');
+            video.src = 'data:' + (guiData.mimeType || 'video/mp4') + ';base64,' + guiData.base64;
+            video.controls = true;
+            video.autoplay = true;
+            video.muted = true;
+            video.style.maxWidth = '100%';
+            video.style.borderRadius = '8px';
+            video.style.marginTop = '8px';
+            if (guiData.description) {
+              const caption = document.createElement('div');
+              caption.style.fontSize = '12px';
+              caption.style.color = '#888';
+              caption.style.marginTop = '4px';
+              caption.textContent = guiData.description;
+              vidEl.appendChild(caption);
+            }
+            vidEl.appendChild(video);
+            $('transcript').appendChild(vidEl);
+            $('transcript').scrollTop = $('transcript').scrollHeight;
+            dbg('Video received via gui.update: ' + (guiData.description || '').slice(0, 50), 'event');
           } else {
             addSystem('[gui] ' + JSON.stringify(guiData));
           }
