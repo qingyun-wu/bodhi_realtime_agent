@@ -156,6 +156,7 @@ MANDATORY TOOL RULES:
 5. When a task completes, you'll get a notification — tell the user naturally.
 6. NEVER claim a task is done without receiving the completion notification.`,
 	tools: [slowTask, failingTask],
+	googleSearch: true,
 	onEnter: async () => console.log(`${ts()} [Agent] main entered`),
 };
 
