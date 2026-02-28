@@ -87,7 +87,7 @@ export interface VoiceSessionConfig {
  *   agents: [mainAgent, expertAgent],
  *   initialAgent: 'main',
  *   port: 9900,
- *   model: google('gemini-2.0-flash'),
+ *   model: google('gemini-2.5-flash'),
  * });
  * await session.start();
  * ```
