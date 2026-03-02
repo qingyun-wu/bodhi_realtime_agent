@@ -168,7 +168,7 @@ const session = new VoiceSession({
   agents: [assistant],
   initialAgent: 'assistant',
   port: 9900,
-  model: google('gemini-2.0-flash'),  // Subagent model (still needed)
+  model: google('gemini-2.5-flash'),  // Subagent model (still needed)
   transport,                     // Inject the OpenAI transport
 });
 
