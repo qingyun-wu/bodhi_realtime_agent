@@ -317,7 +317,6 @@ const session = new VoiceSession({
   agents: [agent],
   initialAgent: 'assistant',
   port: 9900,
-  model: google('gemini-2.5-flash'),
   behaviors: [speechSpeed(), verbosity()],
 });
 

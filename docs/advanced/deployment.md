@@ -93,7 +93,6 @@ function createSession(userId: string): VoiceSession {
     agents: [mainAgent],
     initialAgent: 'main',
     port: 0, // Dynamically assigned
-    model: google('gemini-2.5-flash'),
   });
 
   sessions.set(sessionId, session);
