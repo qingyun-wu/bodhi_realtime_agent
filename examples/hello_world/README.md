@@ -18,6 +18,15 @@ pnpm tsx examples/hello_world/web-client.ts
 
 Connect a WebSocket audio client to `ws://localhost:9900` sending PCM 16-bit 16kHz mono audio.
 
+### Speech-to-Text (STT)
+
+The example uses a **dual STT** approach for the best user experience:
+
+- **Server-side STT** (`GeminiBatchSTTProvider`) — buffers user audio and transcribes it via Gemini when each turn starts. This produces the authoritative final transcript shown in the conversation.
+- **Browser Chrome STT** (`SpeechRecognition` API) — provides low-latency interim "You:" text as you speak, so you see your words appearing in real time. Once the server sends the final transcript, it replaces the interim.
+
+**Use Chrome** (or a Chromium-based browser) for the web client — the `SpeechRecognition` API that powers real-time interim display is only available in Chrome. Other browsers will still work for voice interaction, but you won't see live transcription of your speech.
+
 ## Features in Action
 
 ### Voice Pacing

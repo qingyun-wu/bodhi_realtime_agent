@@ -21,6 +21,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { tool } from 'ai';
 import { z } from 'zod';
 import { VoiceSession } from '../../src/index.js';
+import { GeminiBatchSTTProvider } from '../../src/transport/gemini-batch-stt-provider.js';
 import type { MainAgent, SubagentConfig, ToolDefinition } from '../../src/index.js';
 
 // ---------------------------------------------------------------------------
@@ -175,6 +176,7 @@ async function main() {
 		host: HOST,
 		model: createGoogleGenerativeAI({ apiKey: API_KEY })('gemini-2.5-flash'),
 		geminiModel: 'gemini-2.5-flash-native-audio-preview-12-2025',
+		sttProvider: new GeminiBatchSTTProvider({ apiKey: API_KEY, model: 'gemini-2.5-flash' }),
 		speechConfig: { voiceName: 'Puck' },
 		subagentConfigs: {
 			slow_task: slowTaskSubagent,

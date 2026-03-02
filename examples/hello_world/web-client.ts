@@ -2,8 +2,8 @@
  * Web Audio Client for Bodhi Voice Agent
  *
  * Usage:
- *   1. Start the voice agent:  pnpm tsx app/gemini-realtime-tools.ts
- *   2. Start this client:      pnpm tsx app/web-client.ts
+ *   1. Start the voice agent:  pnpm tsx examples/hello_world/agent.ts
+ *   2. Start this client:      pnpm tsx examples/hello_world/web-client.ts
  *   3. Open http://localhost:8080 in Chrome
  *   4. Click "Connect" and allow microphone access
  */
@@ -11,7 +11,9 @@
 import { createServer } from 'node:http';
 
 const HTTP_PORT = Number(process.env.CLIENT_PORT) || 8080;
-const DEFAULT_WS_URL = process.env.WS_URL || 'ws://localhost:9900';
+const HTTP_HOST = process.env.CLIENT_HOST || '0.0.0.0';
+const WS_PORT = Number(process.env.PORT) || 9900;
+const DEFAULT_WS_URL = `ws://localhost:${WS_PORT}`;
 
 const HTML = /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -80,8 +82,8 @@ const HTML = /* html */ `<!DOCTYPE html>
   .t-assistant { color: #a5d6a7; }
   .t-assistant::before { content: 'Agent: '; font-weight: 600; }
   .t-system { color: #888; font-style: italic; font-size: 12px; }
-  .t-interim { color: #4a6a9f; opacity: 0.6; font-size: 13px; }
-  .t-interim::before { content: 'You (hearing): '; font-weight: 600; }
+  .t-interim { color: #64b5f6; opacity: 0.6; font-size: 13px; }
+  .t-interim::before { content: 'You: '; font-weight: 600; }
   #debug {
     width: 100%; max-width: 700px;
     background: #0a0a15; border-radius: 12px; padding: 12px 14px;
@@ -153,16 +155,35 @@ const HTML = /* html */ `<!DOCTYPE html>
 
 <script>
 // ─── Config ───────────────────────────────────────────────
-const INPUT_RATE  = 16000;
-const OUTPUT_RATE = 24000;
+let INPUT_RATE  = 16000;
+let OUTPUT_RATE = 24000;
 const CAPTURE_BUF = 2048;
+const WS_PORT = ${WS_PORT};
+
+// Auto-detect WebSocket URL from current hostname
+function getDefaultWsUrl() {
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  if (window.location.protocol === 'https:') {
+    return protocol + '//' + hostname + '/ws';
+  }
+  return protocol + '//' + hostname + ':' + WS_PORT;
+}
+
+// Set default WebSocket URL on page load + init Chrome STT
+window.addEventListener('DOMContentLoaded', () => {
+  const wsUrlInput = $('wsUrl');
+  if (wsUrlInput && !wsUrlInput.value) {
+    wsUrlInput.value = getDefaultWsUrl();
+  }
+  initChromeStt();
+});
 
 // ─── State ────────────────────────────────────────────────
 let ws = null;
 let audioCtx = null;
 let micStream = null;
 let processor = null;
-let recognition = null;
 let connected = false;
 let nextPlayTime = 0;
 let activeSources = [];
@@ -173,24 +194,89 @@ let audioChunksRecv = 0;
 let playChunkCount = 0;
 let statsTimer = null;
 
+// Chrome STT state — provides real-time interim display; server STT replaces with final
+let recognition = null;
+
 const debugLog = [];
 const $ = (id) => document.getElementById(id);
+
+// ─── Chrome STT (real-time interim display) ───────────────
+function initChromeStt() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    dbg('Browser does not support SpeechRecognition — no interim transcripts available', 'warn');
+    return;
+  }
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      interim += event.results[i][0].transcript;
+    }
+    if (interim) showChromeSttInterim(interim);
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error !== 'no-speech') dbg('Chrome STT error: ' + event.error, 'warn');
+  };
+
+  recognition.onend = () => {
+    if (connected) {
+      try { recognition.start(); } catch {}
+    }
+  };
+}
+
+function showChromeSttInterim(text) {
+  if (serverUserTextReceived) return;  // server text is authoritative — don't overwrite
+  if (!currentUserEl) {
+    currentUserEl = document.createElement('div');
+    currentUserEl.className = 't-entry t-interim';
+    $('transcript').appendChild(currentUserEl);
+  }
+  currentUserEl.textContent = text;
+  $('transcript').scrollTop = $('transcript').scrollHeight;
+}
+
+function startChromeStt() {
+  if (!recognition) return;
+  try { recognition.start(); } catch {}
+}
+
+function stopChromeStt() {
+  if (recognition) { try { recognition.stop(); } catch {} }
+}
 
 // ─── Transcript ───────────────────────────────────────────
 let currentUserEl = null;
 let currentAssistantEl = null;
-let interimEl = null; // for live speech-to-text preview
+let serverUserTextReceived = false;  // blocks Chrome STT overwrites after server sends
 
 function handleTranscript(role, text, partial) {
-  removeInterim();
   if (role === 'user') {
-    if (!currentUserEl) {
-      currentUserEl = document.createElement('div');
+    dbg('[Server STT] ' + (partial ? 'partial' : 'FINAL') + ': ' + text);
+    serverUserTextReceived = true;
+    if (partial) {
+      if (!currentUserEl) {
+        currentUserEl = document.createElement('div');
+        currentUserEl.className = 't-entry t-interim';
+        $('transcript').appendChild(currentUserEl);
+      }
+      currentUserEl.textContent = text;
+    } else {
+      // Final transcript — update in-place for correct ordering
+      if (!currentUserEl) {
+        currentUserEl = document.createElement('div');
+        $('transcript').appendChild(currentUserEl);
+      }
       currentUserEl.className = 't-entry t-user';
-      $('transcript').appendChild(currentUserEl);
+      currentUserEl.textContent = text;
+      currentUserEl = null;
     }
-    currentUserEl.textContent = text;
-    if (!partial) currentUserEl = null;
   } else {
     if (!currentAssistantEl) {
       currentAssistantEl = document.createElement('div');
@@ -203,22 +289,7 @@ function handleTranscript(role, text, partial) {
   $('transcript').scrollTop = $('transcript').scrollHeight;
 }
 
-function showInterim(text) {
-  if (!interimEl) {
-    interimEl = document.createElement('div');
-    interimEl.className = 't-entry t-interim';
-    $('transcript').appendChild(interimEl);
-  }
-  interimEl.textContent = text;
-  $('transcript').scrollTop = $('transcript').scrollHeight;
-}
-
-function removeInterim() {
-  if (interimEl) { interimEl.remove(); interimEl = null; }
-}
-
 function addSystem(text) {
-  removeInterim();
   const el = document.createElement('div');
   el.className = 't-entry t-system';
   el.textContent = text;
@@ -352,65 +423,22 @@ function playChunk(arrayBuf) {
   }
 }
 
-// ─── Local speech recognition (browser STT) ──────────────
-function startSpeechRecognition() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    dbg('Web Speech API not available in this browser', 'warn');
-    addSystem('Speech-to-text not available (use Chrome for live transcription).');
-    return;
-  }
-
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'en-US';
-  recognition.maxAlternatives = 1;
-
-  recognition.onresult = (event) => {
-    let interim = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const r = event.results[i];
-      if (r.isFinal) {
-        dbg('Speech final: "' + r[0].transcript.trim() + '"', 'event');
-      } else {
-        interim += r[0].transcript;
-      }
-    }
-    if (interim) showInterim(interim);
-  };
-
-  recognition.onerror = (event) => {
-    if (event.error !== 'no-speech' && event.error !== 'aborted') {
-      dbg('Speech recognition error: ' + event.error, 'warn');
-    }
-  };
-
-  recognition.onend = () => {
-    // Auto-restart if still connected
-    if (connected && recognition) {
-      try { recognition.start(); } catch {}
-    }
-  };
-
-  try {
-    recognition.start();
-    dbg('Speech recognition started');
-  } catch (err) {
-    dbg('Failed to start speech recognition: ' + err.message, 'warn');
-  }
-}
-
-function stopSpeechRecognition() {
-  if (recognition) {
-    try { recognition.abort(); } catch {}
-    recognition = null;
-  }
-  removeInterim();
-}
-
 // ─── Microphone capture ───────────────────────────────────
 async function startMic() {
+  // Check if getUserMedia is available (requires HTTPS or localhost)
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    const isLocalhost = window.location.hostname === 'localhost' ||
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname === '[::1]';
+    const isHttps = window.location.protocol === 'https:';
+
+    if (!isLocalhost && !isHttps) {
+      throw new Error('Microphone access requires HTTPS. Please access this page via HTTPS (https://your-domain.com) or use localhost. Modern browsers block getUserMedia on HTTP for security.');
+    } else {
+      throw new Error('Microphone access is not available in this browser. Please use a modern browser that supports getUserMedia.');
+    }
+  }
+
   micStream = await navigator.mediaDevices.getUserMedia({
     audio: {
       echoCancellation: true,
@@ -460,12 +488,12 @@ async function startMic() {
   dbg('Mic capture started');
   addSystem('Microphone active — speak now.');
 
-  // Start browser speech recognition for local transcription
-  startSpeechRecognition();
+  // Start Chrome STT for real-time interim display (server final replaces)
+  startChromeStt();
 }
 
 function stopMic() {
-  stopSpeechRecognition();
+  stopChromeStt();
   if (processor) { processor.disconnect(); processor = null; }
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   // Don't close audioCtx here — playback may still be draining
@@ -510,19 +538,33 @@ function connectWs() {
         const msg = JSON.parse(event.data);
         dbg('Recv: ' + JSON.stringify(msg), 'event');
 
-        if (msg.type === 'transcript') {
+        if (msg.type === 'session.config' && msg.audioFormat) {
+          INPUT_RATE = msg.audioFormat.inputSampleRate;
+          OUTPUT_RATE = msg.audioFormat.outputSampleRate;
+          dbg('Audio format configured: input=' + INPUT_RATE + 'Hz output=' + OUTPUT_RATE + 'Hz', 'event');
+        } else if (msg.type === 'transcript') {
           handleTranscript(msg.role, msg.text, msg.partial !== false);
         } else if (msg.type === 'turn.end') {
+          // Remove orphaned Chrome STT interim — if server never finalized it,
+          // it's echo from the assistant's voice picked up by mic.
+          if (currentUserEl && currentUserEl.classList.contains('t-interim')) {
+            currentUserEl.remove();
+          }
           currentUserEl = null;
           currentAssistantEl = null;
+          serverUserTextReceived = false;
         } else if (msg.type === 'turn.interrupted') {
           for (const s of activeSources) {
             try { s.stop(); } catch {}
           }
           activeSources = [];
           nextPlayTime = 0;
+          if (currentUserEl && currentUserEl.classList.contains('t-interim')) {
+            currentUserEl.remove();
+          }
           currentUserEl = null;
           currentAssistantEl = null;
+          serverUserTextReceived = false;
         } else if (msg.type === 'gui.update') {
           const guiData = msg.payload?.data;
           if (guiData?.type === 'image' && guiData.base64) {
@@ -742,10 +784,15 @@ const server = createServer((_req, res) => {
 	res.end(HTML);
 });
 
-server.listen(HTTP_PORT, () => {
+server.listen(HTTP_PORT, HTTP_HOST, () => {
+	const serverUrl =
+		HTTP_HOST === '0.0.0.0'
+			? `http://localhost:${HTTP_PORT} (or use your server's IP/DNS)`
+			: `http://${HTTP_HOST}:${HTTP_PORT}`;
 	console.log(`\n  Bodhi Voice Agent — Web Client`);
 	console.log(`  ────────────────────────────────`);
-	console.log(`  Open in browser:  http://localhost:${HTTP_PORT}`);
-	console.log(`  Agent WebSocket:  ${DEFAULT_WS_URL}`);
+	console.log(`  Open in browser:  ${serverUrl}`);
+	console.log(`  WebSocket URL:    Auto-detected from browser hostname`);
+	console.log(`  WebSocket port:   ${WS_PORT}`);
 	console.log(`\n  Press Ctrl+C to stop.\n`);
 });
