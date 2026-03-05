@@ -7,9 +7,9 @@
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=5UlC0v5JdHM">
-    <img src="https://img.youtube.com/vi/5UlC0v5JdHM/maxresdefault.jpg" alt="Watch the demo" width="700">
+    <img src="https://img.youtube.com/vi/5UlC0v5JdHM/maxresdefault.jpg" alt="Watch the demo" width="700" />
   </a>
-  <br>
+  <br />
   <em>Click to watch the demo</em>
 </p>
 
@@ -44,6 +44,21 @@ Main Agent (Gemini Live — realtime voice):
 - **Memory**: LLM-powered fact extraction and persistence across sessions with pluggable storage
 - **Session resumption**: Transparent reconnection via Gemini resumption handles and audio buffering
 - **Observability**: Type-safe EventBus and lifecycle hooks for logging, metrics, and debugging
+
+## How It Compares
+
+| | **Bodhi** | **LiveKit Agents** | **Pipecat** | **OpenAI Realtime Agents** | **ElevenLabs** |
+|---|---|---|---|---|---|
+| **Parallel background subagents** | Yes — built-in, each with own tool loop | No — manual async | No — manual frame injection | No — tools block | No |
+| **Voice keeps talking during tools** | Yes — `execution: 'background'` | No | No | No | No |
+| **Zero infrastructure** | Yes — direct to Gemini | No — requires LiveKit SFU | No — requires transport | Yes — but browser-only | No — hosted platform |
+| **Server-side tool execution** | Yes | Yes | Yes | No — browser sandbox | Yes — via webhooks |
+| **Multi-agent transfers** | Yes — with context replay | Yes — `updateAgent()` | Manual | Yes — declarative handoffs | Yes — visual editor |
+| **Provider support** | Gemini Live | OpenAI, Gemini, XAI | 60+ services | OpenAI only | Multiple LLMs |
+| **Memory / fact extraction** | Built-in | No | No | No | Platform-managed |
+| **Language** | TypeScript | TypeScript / Python | Python | TypeScript | REST API |
+
+Bodhi's sweet spot: **single-user voice agents with complex background processing** (AI assistants, research bots, creative tools). If you need multi-participant rooms or provider flexibility, look at LiveKit Agents or Pipecat.
 
 ## Requirements
 
