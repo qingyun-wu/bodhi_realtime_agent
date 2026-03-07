@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/icon.png" alt="Bodhi Agent" width="120" />
+  <img src="docs/images/icon_graphic_only.png" alt="Bodhi Agent" width="120" />
 </p>
 
 # Bodhi Realtime Agent Framework

@@ -6,7 +6,7 @@ hero:
   text: Build Real-Time Voice Agents
   tagline: TypeScript framework for voice AI applications — supports Google Gemini Live and OpenAI Realtime APIs
   image:
-    src: /images/icon.svg
+    src: /images/icon_graphic_only.svg
     alt: Bodhi Agent
   actions:
     - theme: brand

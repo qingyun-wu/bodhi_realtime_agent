@@ -11,7 +11,7 @@ export default withMermaid(
 		head: [['link', { rel: 'icon', href: '/bodhi_realtime_agent/images/icon.svg' }]],
 
 		themeConfig: {
-			logo: '/images/icon.svg',
+			logo: '/images/icon_graphic_only.svg',
 
 			nav: [
 				{ text: 'Guide', link: '/guide/' },
