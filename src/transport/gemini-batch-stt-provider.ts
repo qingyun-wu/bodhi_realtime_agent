@@ -66,10 +66,8 @@ export class GeminiBatchSTTProvider implements STTProvider {
 		const chunkBytes = Math.ceil((base64Pcm.length * 3) / 4);
 		// Enforce buffer limit — drop oldest chunks (FIFO)
 		while (this._bufferBytes + chunkBytes > MAX_BUFFER_BYTES && this._audioChunks.length > 0) {
-			const dropped = this._audioChunks.shift();
-			if (dropped) {
-				this._bufferBytes -= Math.ceil((dropped.length * 3) / 4);
-			}
+			const dropped = this._audioChunks.shift()!;
+			this._bufferBytes -= Math.ceil((dropped.length * 3) / 4);
 		}
 		this._audioChunks.push(base64Pcm);
 		this._bufferBytes += chunkBytes;
