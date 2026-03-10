@@ -2,27 +2,22 @@
   <img src="docs/images/icon_graphic_only.png" alt="Bodhi Agent" width="120" />
 </p>
 
-# Bodhi Realtime Agent Framework
+# Bodhi: High-Performance, Multi-Agent realtime Voice Stack
 
 [![npm version](https://img.shields.io/npm/v/bodhi-realtime-agent.svg)](https://www.npmjs.com/package/bodhi-realtime-agent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Your voice agent keeps talking while background tasks run in parallel.** No other framework does this out of the box.
+**Conversational voice agents with non-blocking background execution.** 
+(No other framework does this out of the box.)
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=zkjBKwQu54s">
-    <img src="https://img.youtube.com/vi/zkjBKwQu54s/maxresdefault.jpg" alt="Watch the demo" width="700" />
-  </a>
-  <br />
-  <em>Click to watch the demo</em>
-</p>
+---
 
-Most voice agent frameworks block conversation while tools execute. User says "generate me a video" and the agent goes silent for two minutes. Bodhi splits the work: **main agents** handle the live conversation (Gemini Live API), while **background subagents** (Vercel AI SDK) run long tasks in parallel. When a task finishes, the agent naturally announces it.
+Most voice agent frameworks block conversation while tools execute. User says "generate me a video" and the agent goes silent for two minutes. Bodhi splits the work: **main agents** handle the live conversation (Gemini Live API by default, OpenAI Realtime also supported), while **background subagents** (Vercel AI SDK) run long tasks in parallel. When a task finishes, the agent naturally announces it.
 
 ```
 User: "Make me a video of a sunset AND search for weather in Tokyo"
 
-Main Agent (Gemini Live — realtime voice):
+Main Agent (Gemini/OpenAI Live — realtime voice):
   "I'm generating your video and looking up the weather..."
   │
   ├─ Subagent 1: Video generation (2 min, Veo API)
@@ -34,30 +29,35 @@ Main Agent (Gemini Live — realtime voice):
   [2m]  "Your video is ready!"        ← video arrives
 ```
 
-**Zero infrastructure.** No LiveKit server, no media SFU, no platform subscription. Just your Node.js server talking directly to Gemini Live API over WebSocket.
+### Claude Code Demo — Voice-Driven Coding Assistant
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=5UlC0v5JdHM">
+    <img src="https://img.youtube.com/vi/5UlC0v5JdHM/maxresdefault.jpg" alt="Watch the Claude Code demo" width="700" />
+  </a>
+  <br />
+  <em>Click to watch the demo</em>
+</p>
+
+Speak coding requests naturally — Claude Code reads, edits, creates files, runs commands, and searches your codebase in the background while you keep talking. See [examples/claude_code](examples/claude_code/) for setup.
 
 ### OpenClaw Integration — Voice-Driven AI Agent
 
-The [OpenClaw demo](examples/openclaw/openclaw-demo.ts) shows a full-featured voice assistant backed by an **interactive background subagent**. Say "write a Python prime checker" or "summarize today's tech news by email" — the request is delegated to the OpenClaw agent which can code, browse the web, send emails, and more. If OpenClaw needs clarification, it asks the user via voice mid-task, then continues. Meanwhile, Gemini handles quick lookups (Google Search), image/video generation, and keeps the conversation flowing.
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=zkjBKwQu54s">
+    <img src="https://img.youtube.com/vi/zkjBKwQu54s/maxresdefault.jpg" alt="Watch the OpenClaw demo" width="700" />
+  </a>
+  <br />
+  <em>Click to watch the demo</em>
+</p>
 
-```
-User: "Write me a Python script that scrapes Hacker News"
+The [OpenClaw demo](examples/openclaw/openclaw-demo.ts) shows a voice assistant backed by an **interactive background subagent**. Say "write a Python prime checker" or "summarize today's tech news by email" — the request is delegated to OpenClaw which can code, browse the web, send emails, and more. If it needs clarification, it asks the user via voice mid-task. See [examples/openclaw](examples/openclaw/) for setup.
 
-Main Agent (voice):  "I'm sending that to my agent now..."  ← keeps talking
-  │
-  └─ OpenClaw subagent (background, interactive):
-       Step 1: openclaw_chat("Write a Python HN scraper")
-       Step 2: ask_user("Should I include comments or just titles?")  ← voice question
-       Step 3: openclaw_chat(user's answer)
-       Step 4: returns summary
-  │
-Main Agent: "Done! The script is saved as hn_scraper.py..."  ← announces result
-```
 
 ## Features
 
 - **Background subagents**: Mark any tool as `execution: 'background'` — it hands off to a Vercel AI SDK subagent with its own tool-use loop (`maxSteps`), running in parallel while the voice agent continues the conversation. Subagents can be **interactive** — asking the user follow-up questions via voice mid-task
-- **Real-time voice**: Bidirectional audio streaming with Gemini Live API, server-side VAD and turn detection
+- **Real-time voice**: Bidirectional audio streaming via Gemini Live API (default) or OpenAI Realtime API, with server-side VAD and turn detection
 - **Multi-agent transfers**: Define specialist agents with distinct personas and tools; transfer mid-conversation with context replay and audio buffering
 - **Inline + background tools**: `inline` tools block the turn (fast lookups); `background` tools run async (image/video generation, data analysis)
 - **Behaviors**: Declarative presets for speech speed, verbosity, language — auto-generates tools, manages state, syncs with client
@@ -66,6 +66,7 @@ Main Agent: "Done! The script is saved as hn_scraper.py..."  ← announces resul
 - **Memory**: LLM-powered fact extraction and persistence across sessions with pluggable storage
 - **Session resumption**: Transparent reconnection via Gemini resumption handles and audio buffering
 - **Observability**: Type-safe EventBus and lifecycle hooks for logging, metrics, and debugging
+- **Zero infrastructure.** No LiveKit server, no media SFU, no platform subscription. Just your Node.js server talking directly to Gemini (or OpenAI) over WebSocket.
 
 ## How It Compares
 
@@ -73,19 +74,31 @@ Main Agent: "Done! The script is saved as hn_scraper.py..."  ← announces resul
 |---|---|---|---|---|---|
 | **Parallel background subagents** | Yes — built-in, each with own tool loop | No — manual async | No — manual frame injection | No — tools block | No |
 | **Voice keeps talking during tools** | Yes — `execution: 'background'` | No | No | No | No |
-| **Zero infrastructure** | Yes — direct to Gemini | No — requires LiveKit SFU | No — requires transport | Yes — but browser-only | No — hosted platform |
+| **Zero infrastructure** | Yes — direct to Gemini/OpenAI | No — requires LiveKit SFU | No — requires transport | Yes — but browser-only | No — hosted platform |
 | **Server-side tool execution** | Yes | Yes | Yes | No — browser sandbox | Yes — via webhooks |
 | **Multi-agent transfers** | Yes — with context replay | Yes — `updateAgent()` | Manual | Yes — declarative handoffs | Yes — visual editor |
-| **Provider support** | Gemini Live | OpenAI, Gemini, XAI | 60+ services | OpenAI only | Multiple LLMs |
+| **Provider support** | Gemini Live, OpenAI Realtime | OpenAI, Gemini, XAI | 60+ services | OpenAI only | Multiple LLMs |
 | **Memory / fact extraction** | Built-in | No | No | No | Platform-managed |
 | **Language** | TypeScript | TypeScript / Python | Python | TypeScript | REST API |
 
-Bodhi's sweet spot: **single-user voice agents with complex background processing** (AI assistants, research bots, creative tools). If you need multi-participant rooms or provider flexibility, look at LiveKit Agents or Pipecat.
+### Who This Is For
+
+- You're building a **single-user voice assistant** that needs to do real work in the background (coding, research, data analysis, media generation) while staying conversational
+- You want **zero infrastructure** — no media servers, no platform subscriptions, just a Node.js process and an API key
+- You need **interactive background tasks** — subagents that can ask the user follow-up questions mid-task via voice
+- You're comfortable with TypeScript and want full control over your agent logic
+
+### Who This Is Not For
+
+- **Multi-participant rooms** (meetings, group calls) — use [LiveKit Agents](https://github.com/livekit/agents-js)
+- **Provider flexibility** (swap between 60+ STT/TTS/LLM services) — use [Pipecat](https://github.com/pipecat-ai/pipecat)
+- **Browser-only agents** (no server) — use [OpenAI Realtime Agents](https://github.com/openai/openai-agents-js)
+- **No-code / visual builder** — use [ElevenLabs](https://elevenlabs.io/)
 
 ## Requirements
 
 - Node.js >= 22
-- A Google API key with Gemini Live API access
+- A Google API key for Gemini Live API (default), or an OpenAI API key for Realtime API
 - pnpm (recommended)
 
 ## Installation
