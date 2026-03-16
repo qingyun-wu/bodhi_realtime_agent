@@ -32,8 +32,8 @@ Main Agent (Gemini/OpenAI Live — realtime voice):
 ### Claude Code Demo — Voice-Driven Coding Assistant
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=5UlC0v5JdHM">
-    <img src="https://img.youtube.com/vi/5UlC0v5JdHM/maxresdefault.jpg" alt="Watch the Claude Code demo" width="700" />
+  <a href="https://youtube.com/watch?v=n3kNK-4expo">
+    <img src="https://img.youtube.com/vi/n3kNK-4expo/maxresdefault.jpg" alt="Watch the Claude Code demo" width="700" />
   </a>
   <br />
   <em>Click to watch the demo</em>
@@ -44,8 +44,8 @@ Speak coding requests naturally — Claude Code reads, edits, creates files, run
 ### OpenClaw Integration — Voice-Driven AI Agent
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=zkjBKwQu54s">
-    <img src="https://img.youtube.com/vi/zkjBKwQu54s/maxresdefault.jpg" alt="Watch the OpenClaw demo" width="700" />
+  <a href="https://www.youtube.com/watch?v=skVLH2qCAQ4">
+    <img src="https://img.youtube.com/vi/skVLH2qCAQ4/maxresdefault.jpg" alt="Watch the OpenClaw demo" width="700" />
   </a>
   <br />
   <em>Click to watch the demo</em>
