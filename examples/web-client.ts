@@ -677,10 +677,12 @@ function connectWs() {
   };
 
   ws.onclose = (e) => {
-    dbg('WS closed: code=' + e.code);
-    const wasUserDisconnect = !connected; // user already clicked Disconnect
+    dbg('WS closed: code=' + e.code + ' reason=' + e.reason);
+    // Server-initiated clean close (goodbye) or user clicked Disconnect
+    const wasCleanDisconnect = !connected || e.reason === 'session_end';
+    if (wasCleanDisconnect) connected = false;
     doCleanup();
-    if (wasUserDisconnect) {
+    if (wasCleanDisconnect) {
       addSystem('Disconnected.');
     } else {
       // Unexpected drop (Gemini timeout) — auto-reconnect
