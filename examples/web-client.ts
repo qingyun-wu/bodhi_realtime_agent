@@ -657,6 +657,12 @@ function connectWs() {
           const speeds = { slow: 0.85, normal: 1.0, fast: 1.2 };
           playbackRate = speeds[msg.speed] || 1.0;
           addSystem('[speed] Speech speed set to ' + msg.speed + ' (' + playbackRate + 'x)');
+        } else if (msg.type === 'session_end') {
+          addSystem('Session ended by voice command.');
+          dbg('session_end received — disconnecting', 'event');
+          connected = false; // prevent auto-reconnect
+          if (ws) { ws.close(); ws = null; }
+          doCleanup();
         } else if (msg.type === 'grounding') {
           const chunks = msg.payload?.groundingChunks;
           if (Array.isArray(chunks) && chunks.length > 0) {
