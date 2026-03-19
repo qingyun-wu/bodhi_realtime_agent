@@ -678,8 +678,8 @@ function connectWs() {
 
   ws.onclose = (e) => {
     dbg('WS closed: code=' + e.code + ' reason=' + e.reason);
-    // Server-initiated clean close (goodbye) or user clicked Disconnect
-    const wasCleanDisconnect = !connected || e.reason === 'session_end';
+    // Server-initiated clean close (goodbye code 4000) or user clicked Disconnect
+    const wasCleanDisconnect = !connected || e.code === 4000;
     if (wasCleanDisconnect) connected = false;
     doCleanup();
     if (wasCleanDisconnect) {
