@@ -708,6 +708,11 @@ export class VoiceSession {
 			this.transport
 				.reconnect({ conversationHistory: this.conversationContext.toReplayContent() })
 				.then(() => {
+					if (this.sessionManager.state === 'CLOSED') {
+						this.log('Reconnect succeeded but session already CLOSED — skipping ACTIVE transition');
+						this.clientTransport.stopBuffering();
+						return;
+					}
 					const buffered = this.clientTransport.stopBuffering();
 					for (const chunk of buffered) {
 						this.transport.sendAudio(chunk.toString('base64'));
