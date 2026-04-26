@@ -201,6 +201,13 @@ export class GeminiLiveTransport implements LLMTransport {
 			};
 		}
 
+		// Enable automatic interruption — stop model output when user speaks
+		connectConfig.realtimeInputConfig = {
+			automaticActivityDetection: {
+				disabled: false,
+			},
+		};
+
 		this.session = await this.ai.live.connect({
 			model,
 			config: connectConfig,
@@ -332,13 +339,21 @@ export class GeminiLiveTransport implements LLMTransport {
 		this.session.sendClientContent({ turns: geminiTurns, turnComplete });
 	}
 
-	/** Send a file/image to Gemini as inline data. */
+	/** Send a file/image to Gemini as realtime input. */
 	sendFile(base64Data: string, mimeType: string): void {
 		if (!this.session) return;
-		this.session.sendClientContent({
-			turns: [{ role: 'user', parts: [{ inlineData: { data: base64Data, mimeType } }] as never[] }],
-			turnComplete: false,
-		});
+		if (mimeType.startsWith('image/')) {
+			// Send images as video frames via realtime input
+			this.session.sendRealtimeInput({
+				video: { data: base64Data, mimeType } as any,
+			});
+		} else {
+			// Fallback for other file types
+			this.session.sendClientContent({
+				turns: [{ role: 'user', parts: [{ inlineData: { data: base64Data, mimeType } }] as never[] }],
+				turnComplete: false,
+			});
+		}
 	}
 
 	/** Send a tool result back to Gemini (LLMTransport API). */

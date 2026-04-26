@@ -479,6 +479,8 @@ interface FrameworkHooks {
     /** Fires after a tool completes, is cancelled, or errors. */
     onToolResult?(event: {
         toolCallId: string;
+        toolName?: string;
+        result?: unknown;
         durationMs: number;
         status: 'completed' | 'cancelled' | 'error';
         error?: string;
@@ -551,6 +553,8 @@ declare class HooksManager {
     }) => void) | undefined;
     get onToolResult(): ((event: {
         toolCallId: string;
+        toolName?: string;
+        result?: unknown;
         durationMs: number;
         status: "completed" | "cancelled" | "error";
         error?: string;
@@ -2228,7 +2232,7 @@ declare class GeminiLiveTransport implements LLMTransport {
     get isConnected(): boolean;
     /** Send provider-neutral content turns to Gemini. Converts ContentTurn to Gemini format. */
     sendContent(turns: ContentTurn[], turnComplete?: boolean): void;
-    /** Send a file/image to Gemini as inline data. */
+    /** Send a file/image to Gemini as realtime input. */
     sendFile(base64Data: string, mimeType: string): void;
     /** Send a tool result back to Gemini (LLMTransport API). */
     sendToolResult(result: TransportToolResult): void;

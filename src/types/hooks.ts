@@ -48,6 +48,8 @@ export interface FrameworkHooks {
 	/** Fires after a tool completes, is cancelled, or errors. */
 	onToolResult?(event: {
 		toolCallId: string;
+		toolName?: string;
+		result?: unknown;
 		durationMs: number;
 		status: 'completed' | 'cancelled' | 'error';
 		error?: string;

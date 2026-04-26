@@ -2044,6 +2044,8 @@ var ToolExecutor = class {
     if (this.hooks.onToolResult) {
       this.hooks.onToolResult({
         toolCallId: call.toolCallId,
+        toolName: call.toolName,
+        result: result.result,
         durationMs,
         status: result.error ? "error" : "completed",
         error: result.error
@@ -2423,6 +2425,11 @@ var GeminiLiveTransport = class {
         slidingWindow: { targetTokens: this.config.compressionConfig.targetTokens }
       };
     }
+    connectConfig.realtimeInputConfig = {
+      automaticActivityDetection: {
+        disabled: false
+      }
+    };
     this.session = await this.ai.live.connect({
       model,
       config: connectConfig,
@@ -2526,13 +2533,19 @@ var GeminiLiveTransport = class {
     }));
     this.session.sendClientContent({ turns: geminiTurns, turnComplete });
   }
-  /** Send a file/image to Gemini as inline data. */
+  /** Send a file/image to Gemini as realtime input. */
   sendFile(base64Data, mimeType) {
     if (!this.session) return;
-    this.session.sendClientContent({
-      turns: [{ role: "user", parts: [{ inlineData: { data: base64Data, mimeType } }] }],
-      turnComplete: false
-    });
+    if (mimeType.startsWith("image/")) {
+      this.session.sendRealtimeInput({
+        video: { data: base64Data, mimeType }
+      });
+    } else {
+      this.session.sendClientContent({
+        turns: [{ role: "user", parts: [{ inlineData: { data: base64Data, mimeType } }] }],
+        turnComplete: false
+      });
+    }
   }
   /** Send a tool result back to Gemini (LLMTransport API). */
   sendToolResult(result) {

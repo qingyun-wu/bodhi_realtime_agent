@@ -130,6 +130,8 @@ export class ToolExecutor {
 		if (this.hooks.onToolResult) {
 			this.hooks.onToolResult({
 				toolCallId: call.toolCallId,
+				toolName: call.toolName,
+				result: result.result,
 				durationMs,
 				status: result.error ? 'error' : 'completed',
 				error: result.error,
