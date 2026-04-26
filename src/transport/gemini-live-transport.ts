@@ -279,7 +279,7 @@ export class GeminiLiveTransport implements LLMTransport {
 	sendAudio(base64Data: string): void {
 		if (!this.session) return;
 		this.session.sendRealtimeInput({
-			media: { data: base64Data, mimeType: 'audio/pcm;rate=16000' },
+			audio: { data: base64Data, mimeType: 'audio/pcm;rate=16000' },
 		});
 	}
 
