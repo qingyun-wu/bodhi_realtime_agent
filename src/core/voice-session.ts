@@ -754,6 +754,10 @@ export class VoiceSession {
 		} else if (message.type === 'file_upload' && message.data) {
 			const data = message.data as { base64: string; mimeType: string; fileName?: string };
 			this.handleFileUpload(data.base64, data.mimeType, data.fileName);
+			// If a text prompt came with the photo, send it after a short delay
+			if (typeof message.text === 'string' && message.text.trim()) {
+				setTimeout(() => this.handleTextInput(message.text as string), 1500);
+			}
 		} else if (message.type === 'text_input' && typeof message.text === 'string') {
 			this.handleTextInput(message.text);
 		}
